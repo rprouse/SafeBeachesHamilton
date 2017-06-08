@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ParseWeb": {
+      "commandName": "Project",
+      "commandLineArgs": "rprouse @gileCodeMonkey"
+    }
+  }
+}
