@@ -1,26 +1,33 @@
-﻿using System;
+using System;
+using System.Configuration;
 using System.Data.SqlClient;
 using Dapper;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host;
 
-namespace ParseWeb
+namespace BeachesFunctionApp
 {
-    class Program
+    public static class ParseHamiltonBeaches
     {
         const string UPDATE = "update Reading with (serializable) set [BeachId]=@BeachId, [Open]=@Open, [DateTested]=@DateTested, [DateAdded]=@DateAdded, [Temperature]=@Temperature, [Message]=@Message where [BeachId]=@BeachId and [DateAdded]=@DateAdded";
         const string INSERT = "insert into Reading ([BeachId], [Open], [DateTested], [DateAdded], [Temperature], [Message]) values (@BeachId, @Open, @DateTested, @DateAdded, @Temperature, @Message)";
 
-        static void Main(string[] args)
+        [FunctionName("TimerTriggerCSharp")]
+        public static void Run([TimerTrigger("0 0 */4 * * *")]TimerInfo myTimer, TraceWriter log)
         {
+            log.Info($"Parsing Hamilton Beaches at: {DateTime.Now}");
+
             var readings = HamiltonBeaches.ParseBeachQualityPage().Result;
             try
             {
-                using (SqlConnection connection = new SqlConnection($"Server=tcp:beaches.database.windows.net,1433;Initial Catalog=SafeBeaches;Persist Security Info=False;User ID={args[0]};Password={args[1]};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"))
+                var conn = ConfigurationManager.ConnectionStrings["Default"].ConnectionString;
+                using (var connection = new SqlConnection(conn))
                 {
                     connection.Open();
 
                     foreach (var reading in readings)
                     {
-                        Console.WriteLine($"{reading.Beach.Name} is {reading.Open}");
+                        log.Info($"{reading.Beach.Name} is {reading.Open}");
 
                         var parms = new { BeachId = reading.Beach.Id, Open = (int)reading.Open, DateTested = reading.DateTested, DateAdded = reading.DateAdded, Temperature = reading.Temperature, Message = reading.Message };
                         var rows = connection.Execute(UPDATE, parms);
@@ -31,21 +38,11 @@ namespace ParseWeb
                     }
                 }
             }
-            catch (SqlException e)
+            catch(Exception e)
             {
-                Console.WriteLine(e.ToString());
+                log.Error(e.ToString());
+                throw;
             }
-
-            ConfirmExit();
-        }
-
-        private static void ConfirmExit()
-        {
-#if DEBUG
-            Console.WriteLine();
-            Console.WriteLine("*** Press ENTER to Exit ***");
-            Console.ReadLine();
-#endif
         }
     }
 }

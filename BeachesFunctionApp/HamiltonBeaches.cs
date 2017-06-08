@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
-namespace ParseWeb
+namespace BeachesFunctionApp
 {
     public class HamiltonBeaches
     {
